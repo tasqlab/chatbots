@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HACKIBOT</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<!-- Markdown Parser + Security -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+<style>
+:root{--bg:#0d0d0f;--bg2:#13131a;--panel:#0f0f18;--border:#2a2a3d;--ink:#c8c8e8;--muted:#5a5a7a;--green:#39ff6e;--red:#ff3a3a;--cyan:#3af0ff;--yellow:#ffd23f;--glow-c:0 0 8px #3af0ff88;--glow-g:0 0 8px #39ff6e88}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);color:var(--ink);font-family:'VT323',monospace;font-size:18px;line-height:1.4;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.18) 2px,rgba(0,0,0,0.18) 4px);pointer-events:none;z-index:9999}
+@keyframes flicker{0%,100%{opacity:1}93%{opacity:0.94}96%{opacity:0.97}}body{animation:flicker 6s infinite}
+header{text-align:center;padding:20px;position:relative}
+header::after{content:'';display:block;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),var(--pink),transparent);margin-top:10px;box-shadow:var(--glow-c)}
+.title-main{font-family:'Press Start 2P';font-size:clamp(18px,4vw,32px);color:var(--cyan);text-shadow:0 0 20px #3af0ffaa}
+.title-sub{font-size:14px;color:var(--muted);margin-top:5px;letter-spacing:0.2em}
+.container{max-width:800px;margin:0 auto;padding:20px;height:calc(100vh-180px);display:flex;flex-direction:column}
+#chat-window{flex:1;background:var(--panel);border:2px solid var(--border);padding:20px;overflow-y:auto;margin-bottom:20px;display:flex;flex-direction:column;gap:15px}
+
+/* ── MESSAGE STYLES ── */
+.message{max-width:85%;padding:12px 16px;font-size:20px;animation:pop 0.3s ease;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+@keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.message.user{align-self:flex-end;background:rgba(57,255,110,0.1);border:1px solid var(--green);color:var(--green)}
+.message.bot{align-self:flex-start;background:rgba(58,240,255,0.1);border:1px solid var(--cyan);color:var(--cyan)}
+.message.system{align-self:center;font-size:14px;color:var(--muted);text-align:center}
+.message.error{color:var(--red);border:1px solid var(--red);background:rgba(255,58,58,0.1)}
+.message.warning{color:var(--yellow);border:1px solid var(--yellow);background:rgba(255,210,63,0.1)}
+
+/* ── MARKDOWN STYLING (inside .message.bot) ── */
+.message.bot h1,.message.bot h2,.message.bot h3{color:var(--yellow);margin:10px 0 5px;font-family:'Press Start 2P';font-size:14px}
+.message.bot h1{font-size:16px}
+.message.bot h2{font-size:15px}
+.message.bot p{margin:8px 0}
+.message.bot strong{color:var(--green);font-weight:bold}
+.message.bot em{color:var(--pink);font-style:italic}
+.message.bot code{background:#ffffff1a;padding:2px 5px;border-radius:3px;color:var(--cyan);font-family:'VT323'}
+.message.bot pre{background:#000;border:1px solid var(--border);padding:12px;margin:10px 0;border-radius:4px;overflow-x:auto}
+.message.bot pre code{background:transparent;padding:0;color:var(--yellow);display:block;white-space:pre}
+.message.bot ul,.message.bot ol{margin:8px 0;padding-left:25px}
+.message.bot li{margin:4px 0}
+.message.bot blockquote{border-left:3px solid var(--cyan);padding-left:12px;margin:8px 0;color:var(--muted);font-style:italic}
+.message.bot a{color:var(--cyan);text-decoration:none;border-bottom:1px dashed var(--cyan)}
+.message.bot a:hover{text-shadow:var(--glow-c)}
+.message.bot table{border-collapse:collapse;width:100%;margin:8px 0;font-size:18px}
+.message.bot th,.message.bot td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.message.bot th{background:rgba(58,240,255,0.1);color:var(--cyan)}
+.message.bot hr{border:none;border-top:1px solid var(--border);margin:15px 0}
+
+/* ── INPUT/STATUS ── */
+.input-section{display:flex;gap:10px;background:var(--panel);border:2px solid var(--border);padding:10px}
+#user-input{flex:1;background:#080810;border:1px solid var(--border);color:var(--ink);font-family:'VT323';font-size:22px;padding:10px;outline:none}
+#user-input:focus{border-color:var(--cyan)}
+#send-btn{background:var(--bg2);border:1px solid var(--cyan);color:var(--cyan);font-family:'Press Start 2P';font-size:10px;padding:0 20px;cursor:pointer;transition:all 0.2s}
+#send-btn:hover{background:var(--cyan);color:#000;box-shadow:var(--glow-c)}
+#send-btn:disabled{opacity:0.5;cursor:not-allowed}
+.typing{font-size:14px;color:var(--muted);display:none}.typing::after{content:'...';animation:dots 1.5s steps(5,end) infinite}
+@keyframes dots{0%,20%{content:''}40%{content:'.'}80%{content:'...'}}
+.status{font-size:12px;color:var(--muted);text-align:center;margin-top:5px}
+.status.ok{color:var(--green)}.status.limit{color:var(--yellow)}.status.off{color:var(--red)}.status.error{color:var(--red)}
+.debug{font-size:10px;color:var(--muted);text-align:center;margin-top:2px;opacity:0.7}
+</style>
+</head>
+<body>
+<header>
+  <div class="title-main">HACKIBOT v5.3</div>
+  <div class="title-sub">GROQ LPU // OSS 120b</div>
+</header>
+<div class="container">
+  <div id="chat-window">
+    <div class="message system">> INITIALIZING...</div>
+    <div class="message system" id="debug-status">> WAITING FOR CONFIG...</div>
+  </div>
+  <div class="typing" id="typing">GROQ PROCESSING</div>
+  <div class="status off" id="status">● OFFLINE - CONFIGURE KEY</div>
+  <div class="input-section">
+    <input type="text" id="user-input" placeholder="ENTER COMMAND..." autocomplete="off">
+    <button id="send-btn">EXECUTE</button>
+  </div>
+</div>
+
+<script>
+// ── ⚠️ CONFIGURATION ⚠️ ──
+const GROQ_API_KEY = "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"; 
+// ✅ Your chosen model (oss 120b or other)
+const GROQ_MODEL = "openai/gpt-oss-120b"; // ← Change if needed
+// ────────────────────────
+
+// ── DOM ELEMENTS ──
+const els = {
+  chat: document.getElementById('chat-window'),
+  input: document.getElementById('user-input'),
+  send: document.getElementById('send-btn'),
+  typing: document.getElementById('typing'),
+  status: document.getElementById('status'),
+  debug: document.getElementById('debug-status')
+};
+
+// ── MESSAGE HISTORY ──
+let history = [
+  {role:"system", content:"You are Hackibot, a cyberpunk terminal assistant. Use markdown for formatting: **bold**, *italic*, ```code blocks```, lists, etc. Be concise and technical."}
+];
+
+// ── MARKDOWN CONFIG ──
+marked.setOptions({
+  breaks: true,        // Convert \n to <br>
+  gfm: true,           // GitHub-flavored markdown
+  headerIds: false,    // No IDs on headers (cleaner)
+  mangle: false        // Don't escape emails
+});
+
+// ── FUNCTIONS ──
+
+function addMessage(text, cls) {
+  const div = document.createElement('div');
+  div.className = `message ${cls}`;
+  
+  if(cls === 'bot') {
+    // Parse markdown for bot messages ONLY (security)
+    const rawHtml = marked.parse(text);
+    const cleanHtml = DOMPurify.sanitize(rawHtml);
+    div.innerHTML = cleanHtml;
+  } else {
+    // User/system messages: plain text (no markdown parsing)
+    div.textContent = text;
+  }
+  
+  els.chat.appendChild(div);
+  els.chat.scrollTop = els.chat.scrollHeight;
+}
+
+async function checkConnection() {
+  if(!GROQ_API_KEY || GROQ_API_KEY === "YOUR_GROQ_API_KEY_HERE") {
+    els.status.textContent = "● ERROR: NO API KEY";
+    els.status.className = "status error";
+    els.debug.textContent = "> EDIT HTML: LINE 108 (GROQ_API_KEY)";
+    addMessage("> ERROR: API Key missing. Edit line 108.", "error");
+    return false;
+  }
+
+  els.debug.textContent = "> Pinging Groq API...";
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/models", {
+      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+    });
+    
+    if(!res.ok) {
+      if(res.status === 401) throw new Error("INVALID_KEY");
+      if(res.status === 429) throw new Error("RATE_LIMIT");
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    els.status.textContent = "● CONNECTED - GROQ LPU ONLINE";
+    els.status.className = "status ok";
+    els.debug.textContent = "> CONNECTION VERIFIED. READY.";
+    addMessage("> SYSTEM ONLINE. MARKDOWN ENABLED.", "system");
+    return true;
+
+  } catch(e) {
+    els.status.textContent = "● ERROR: " + e.message;
+    els.status.className = "status error";
+    els.debug.textContent = "> ERROR: " + e.message;
+    addMessage(`> CONNECTION FAILED: ${e.message}`, "error");
+    if(e.message === "INVALID_KEY") {
+      addMessage("> Check key at console.groq.com/keys", "warning");
+    }
+    return false;
+  }
+}
+
+async function callGroq(prompt) {
+  history.push({role:"user", content:prompt});
+  
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: history,
+        temperature: 0.7,
+        max_tokens: 2048,
+        stream: false
+      })
+    });
+
+    els.debug.textContent = `> HTTP ${res.status}`;
+
+    if(!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if(res.status === 401) throw new Error("INVALID_KEY");
+      if(res.status === 429) throw new Error("RATE_LIMIT");
+      if(err.error?.message?.includes("decommissioned") || err.error?.message?.includes("not found")) {
+        throw new Error("MODEL_NOT_FOUND");
+      }
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const reply = data.choices[0]?.message?.content || "No response.";
+    
+    history.push({role:"assistant", content:reply});
+    addMessage(reply, "bot");
+    els.debug.textContent = "> RESPONSE RECEIVED";
+
+  } catch(e) {
+    console.error("Groq Error:", e);
+    history.pop();
+    els.debug.textContent = `> ERROR: ${e.message}`;
+    
+    if(e.message === "INVALID_KEY") {
+      els.status.textContent = "● ERROR: INVALID KEY";
+      addMessage("> Invalid API Key. Check line 108.", "error");
+    } else if(e.message === "RATE_LIMIT") {
+      els.status.textContent = "⚠️ RATE LIMITED";
+      addMessage("> Rate limit reached. Wait ~1 minute.", "warning");
+    } else if(e.message === "MODEL_NOT_FOUND") {
+      els.status.textContent = "● ERROR: MODEL NOT FOUND";
+      addMessage("> Model not available. Try: llama-3.3-70b-versatile", "warning");
+      addMessage("> Edit line 110 with a valid Groq model.", "system");
+    } else {
+      addMessage(`> ERROR: ${e.message}`, "error");
+    }
+  }
+}
+
+async function handleSend() {
+  const text = els.input.value.trim();
+  if(!text) return;
+
+  addMessage(text, "user");
+  els.input.value = "";
+  els.send.disabled = true;
+  els.input.disabled = true;
+  els.typing.style.display = "block";
+  els.chat.scrollTop = els.chat.scrollHeight;
+
+  await callGroq(text);
+
+  els.typing.style.display = "none";
+  els.send.disabled = false;
+  els.input.disabled = false;
+  els.input.focus();
+}
+
+// ── EVENT LISTENERS ──
+els.send.addEventListener('click', handleSend);
+els.input.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
+});
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  checkConnection();
+  els.input.focus();
+});
+</script>
+</body>
+</html>

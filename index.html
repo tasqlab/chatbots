@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>tasqlab — Games & Projects</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=Syne+Mono&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+  /* ---------- THEME VARIABLES & BASE ---------- */
+  :root {
+    --transition: 180ms ease;
+  }
+
+  html,body{height:100%}
+  body {
+    margin:0;
+    font-family: 'Syne', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  /* ---------- CREAM / NEAL.FUN THEME ---------- */
+  .theme-cream {
+    --bg: #f5f0e8;
+    --bg2: #ede8de;
+    --bg3: #e4ddd0;
+    --ink: #1a1714;
+    --ink2: #4a4540;
+    --ink3: #8a847a;
+    --accent: #a52a2a;
+    --card-bg: var(--bg2);
+    --card-bg-hover: #a52a2a;
+    --card-text-hover: #ffffff;
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  /* ---------- CODER / TERMINAL THEME ---------- */
+  .theme-coder {
+    --bg: #0d0d0f;
+    --bg2: #13131a;
+    --bg3: #1a1a26;
+    --panel: #0f0f18;
+    --border: #2a2a3d;
+    --ink: #c8c8e8;
+    --muted: #5a5a7a;
+    --green: #39ff6e;
+    --red: #ff3a3a;
+    --yellow: #ffd23f;
+    --cyan: #3af0ff;
+    --pink: #ff3adf;
+    --glow-c: 0 0 8px #3af0ff88;
+    --glow-g: 0 0 8px #39ff6e88;
+    --card-bg: var(--panel);
+    --card-bg-hover: rgba(58,240,255,0.12);
+    --card-text-hover: var(--cyan);
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'VT323', monospace;
+  }
+
+  /* ---------- SHARED LAYOUT ---------- */
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px;
+  }
+
+  header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding: 12px 0;
+  }
+
+  .brand {
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .logo {
+    font-family:'Press Start 2P', monospace;
+    font-size:18px;
+    color:var(--cyan, #3af0ff);
+    letter-spacing:0.04em;
+  }
+
+  .site-title {
+    font-weight:800;
+    font-size:20px;
+  }
+
+  .header-actions {
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .btn {
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.06);
+    color:inherit;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:all var(--transition);
+    font-family:inherit;
+  }
+  .btn:hover{transform:translateY(-2px)}
+
+  /* ---------- Intro ---------- */
+  .hero {
+    margin: 20px 0 30px;
+    display:flex;
+    align-items:flex-start;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .hero-left {
+    flex:1 1 420px;
+  }
+  .hero-right {
+    width: 240px;
+    min-width:160px;
+  }
+  h1 {
+    margin:0 0 10px 0;
+    font-size: clamp(22px, 4.4vw, 38px);
+  }
+  p.lead { margin:0; color:var(--muted, #666); max-width:56ch; }
+
+  /* ---------- GAMES GRID ---------- */
+  .games-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fill,minmax(220px,1fr));
+    gap:16px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid rgba(0,0,0,0.06);
+    padding:16px;
+    border-radius:12px;
+    text-decoration:none;
+    color:inherit;
+    transition: transform var(--transition), background var(--transition), box-shadow var(--transition);
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    background: var(--card-bg-hover);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  }
+  .card .icon { font-size: 28px; margin-bottom:8px; display:block; }
+  .card .title { font-weight:700; margin-bottom:6px; }
+  .card .desc { font-size:13px; color:var(--muted, #666); }
+
+  /* card hover text color */
+  .card:hover .title,
+  .card:hover .desc,
+  .card:hover .icon {
+    color: var(--card-text-hover);
+  }
+
+  /* ---------- Footer ---------- */
+  footer {
+    margin-top:28px;
+    padding-top:18px;
+    border-top:1px solid rgba(255,255,255,0.04);
+    color:var(--muted, #888);
+    font-size:13px;
+  }
+
+  /* ---------- Small screens ---------- */
+  @media (max-width:640px) {
+    .hero { flex-direction:column; }
+    .hero-right { width:100% }
+    .games-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Visual touches for coder theme ---------- */
+  .theme-coder header::after {
+    content:'';
+    display:block;
+    height:2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), var(--pink), transparent);
+    margin-top:10px;
+    box-shadow: var(--glow-c);
+  }
+  .theme-coder h1 { color: var(--cyan); text-shadow: 0 0 12px #3af0ff66; }
+  .theme-coder .logo { color: var(--cyan); }
+
+  /* ---------- Small helper for theme toggle UI ---------- */
+  .theme-toggle {
+    display:inline-flex;
+    gap:8px;
+    align-items:center;
+    padding:6px;
+    border-radius:999px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  </style>
+</head>
+<body class="theme-coder"> <!-- default: coder; change to theme-cream for cream theme -->
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">TASQLAB</div>
+        <div class="site-title">tasqlab — chatbots</div>
+      </div>
+
+      <div class="header-actions">
+        <a class="btn" href="https://tasqlab.github.io" target="_blank" rel="noopener">Homepage</a>
+        <div class="theme-toggle" title="Switch theme">
+          <button id="toggle-theme" class="btn" aria-label="Toggle theme">Toggle theme</button>
+        </div>
+        <a class="btn" href="https://github.com/tasqlab" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-left">
+        <h1>Welcome — Play, explore, build.</h1>
+        <p class="lead">My chatbots web ui. Made in html</p>
+      </div>
+
+      <aside class="hero-right">
+        <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(0,0,0,0.04)">
+          <div style="font-family:'Syne Mono', monospace; font-size:12px;color:var(--muted)">Profile</div>
+          <div style="font-weight:700;margin-top:6px">tasqlab</div>
+          <div style="margin-top:8px;font-size:13px;color:var(--muted)">Open-source, hobby games, tooling</div>
+          <div style="margin-top:12px">
+            <a class="btn" href="https://github.com/tasqlab" target="_blank" rel="noopener">View GitHub</a>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section>
+      <h2 style="margin-bottom:12px">Chatbots</h2>
+
+      <div id="games-grid" class="games-grid" aria-live="polite">
+        <!-- cards are auto-generated by JS -->
+      </div>
+    </section>
+
+    <footer>
+      Made with code and curiosity • <a href="https://github.com/tasqlab" target="_blank" rel="noopener">github.com/tasqlab</a>
+    </footer>
+  </div>
+
+  <script>
+  // ======== Data: add or remove items here ========
+  // Each item: { file: "relative/path.html", title: "Title", icon: "🎮", desc: "Short description" }
+  const items = [
+    { file: "hackibot", title: "Hackibot", icon: "🤖", desc: "terminal style chatbot" },
+    { file: "velocitychat", title: "Velocity AI", icon: "🪟", desc: "cool main chatbot, can select models and stuff" },
+    ];
+
+  // ======== Auto-generate grid ========
+  const grid = document.getElementById('games-grid');
+  items.forEach(it => {
+    const a = document.createElement('a');
+    a.className = 'card';
+    a.href = it.file;
+    a.innerHTML = `
+      <span class="icon">${it.icon}</span>
+      <div class="title">${it.title}</div>
+      <div class="desc">${it.desc}</div>
+    `;
+    grid.appendChild(a);
+  });
+
+  // ======== Theme toggle (toggle between coder and cream) ========
+  const body = document.body;
+  const btn = document.getElementById('toggle-theme');
+  btn.addEventListener('click', () => {
+    if (body.classList.contains('theme-coder')) {
+      body.classList.remove('theme-coder');
+      body.classList.add('theme-cream');
+      // adjust localStorage so user choice persists
+      localStorage.setItem('tasqlab-theme','cream');
+    } else {
+      body.classList.remove('theme-cream');
+      body.classList.add('theme-coder');
+      localStorage.setItem('tasqlab-theme','coder');
+    }
+  });
+
+  // Restore saved theme
+  (function restoreTheme(){
+    const saved = localStorage.getItem('tasqlab-theme');
+    if (saved === 'cream') {
+      body.classList.remove('theme-coder');
+      body.classList.add('theme-cream');
+    } else {
+      body.classList.remove('theme-cream');
+      body.classList.add('theme-coder');
+    }
+  })();
+
+  </script>
+</body>
+</html>

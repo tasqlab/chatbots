@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velocity AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0c0f; --bg2: #111418; --bg3: #181d22;
+    --text: #e8e4da; --muted: #7a7670;
+    --accent: #c8a96e; --accent2: #5b8fa8;
+    --border: rgba(255,255,255,0.07);
+    --glass: rgba(24, 29, 34, 0.6);
+    --glass-border: rgba(255,255,255,0.08);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    --transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 15px;
+    line-height: 1.7; overflow-x: hidden; cursor: none;
+    transition: background 0.5s ease;
+  }
+  .bg-layer { position: fixed; inset: 0; z-index: -1; transition: opacity 0.8s ease; }
+  .bg-aurora {
+    background: radial-gradient(ellipse at 20% 20%, rgba(200,169,110,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(91,143,168,0.15) 0%, transparent 50%),
+                linear-gradient(135deg, #0a0c0f, #151a23);
+  }
+  .bg-cosmic {
+    background: radial-gradient(ellipse at 30% 30%, rgba(255,107,107,0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 70% 70%, rgba(91,143,168,0.1) 0%, transparent 40%),
+                linear-gradient(180deg, #0a0c0f 0%, #1a1520 100%);
+  }
+  .bg-forest {
+    background: radial-gradient(ellipse at 20% 80%, rgba(110,200,168,0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(200,169,110,0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #0a0f0d, #152018);
+  }
+  .bg-gradient {
+    background: linear-gradient(135deg, #0a0c0f 0%, #1a1f2e 50%, #0f1419 100%);
+  }
+  .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .particle {
+    position: absolute; width: 4px; height: 4px;
+    background: var(--accent); border-radius: 50%;
+    opacity: 0; animation: particleFloat 20s infinite;
+    box-shadow: 0 0 10px var(--accent);
+  }
+  @keyframes particleFloat {
+    0% { transform: translateY(100vh) translateX(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(-100vh) translateX(100px) rotate(720deg); opacity: 0; }
+  }
+  #cursor {
+    position: fixed; width: 12px; height: 12px;
+    border: 1.5px solid var(--accent); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s, width 0.2s, height 0.2s, border-color 0.2s;
+    mix-blend-mode: difference;
+  }
+  #cursor.big { width: 40px; height: 40px; border-color: var(--accent2); }
+  #cursor.clicking { transform: translate(-50%, -50%) scale(0.8); }
+  #progress {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    z-index: 100; width: 0%; transition: width 0.1s linear;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 1000;
+  }
+  .app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+  #sidebar {
+    width: 280px; background: var(--glass); backdrop-filter: blur(20px);
+    border-right: 1px solid var(--glass-border); padding: 32px 24px;
+    display: flex; flex-direction: column; gap: 8px; position: fixed;
+    height: 100vh; overflow-y: auto; z-index: 50; transition: var(--transition);
+    animation: slideInLeft 0.6s ease;
+  }
+  @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  #sidebar.collapsed { width: 80px; padding: 32px 12px; }
+  #sidebar.collapsed .nav-label, #sidebar.collapsed .chat-title,
+  #sidebar.collapsed .sidebar-header h2, #sidebar.collapsed .new-chat-text { display: none; }
+  #sidebar.collapsed .sidebar-header { justify-content: center; }
+  #sidebar.collapsed .nav-icon { margin: 0 auto; }
+  .sidebar-header {
+    display: flex; align-items: center; gap: 12px;
+    padding-bottom: 24px; margin-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .sidebar-header h2 {
+    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+    color: var(--accent); letter-spacing: -0.02em;
+  }
+  .toggle-sidebar {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; padding: 4px; transition: var(--transition);
+  }
+  .toggle-sidebar:hover { color: var(--accent); transform: rotate(180deg); }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-radius: 8px; cursor: pointer; transition: var(--transition);
+    color: var(--muted); text-decoration: none; position: relative; overflow: hidden;
+  }
+  .nav-item::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0; background: linear-gradient(90deg, var(--accent), transparent);
+    transition: width 0.3s ease; opacity: 0.2;
+  }
+  .nav-item:hover::before, .nav-item.active::before { width: 100%; }
+  .nav-item:hover, .nav-item.active {
+    background: rgba(200,169,110,0.1); color: var(--accent); transform: translateX(4px);
+  }
+  .nav-icon { font-size: 18px; min-width: 20px; text-align: center; }
+  .nav-label { font-size: 14px; letter-spacing: 0.05em; }
+  .new-chat-btn {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(200,169,110,0.15), rgba(91,143,168,0.15));
+    border: 1px solid var(--glass-border); border-radius: 10px;
+    color: var(--accent); cursor: pointer; transition: var(--transition);
+    margin: 8px 0 24px; position: relative; overflow: hidden;
+  }
+  .new-chat-btn::before {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 0; height: 0; border-radius: 50%;
+    background: rgba(255,255,255,0.1); transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  .new-chat-btn:hover::before { width: 300px; height: 300px; }
+  .new-chat-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(200,169,110,0.2); }
+  .new-chat-text { font-size: 14px; font-weight: 400; }
+  .chat-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .chat-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-radius: 8px; cursor: pointer; transition: var(--transition);
+    font-size: 13px; color: var(--muted); position: relative; animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+  .chat-item:hover, .chat-item.active { background: rgba(255,255,255,0.04); color: var(--text); }
+  .chat-item.active::before {
+    content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 70%; background: linear-gradient(180deg, var(--accent), var(--accent2));
+    border-radius: 0 2px 2px 0; box-shadow: 0 0 10px var(--accent);
+  }
+  .chat-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-delete {
+    opacity: 0; padding: 4px 8px; font-size: 14px; color: var(--muted);
+    transition: var(--transition); margin-left: auto; cursor: pointer;
+  }
+  .chat-item:hover .chat-delete { opacity: 1; }
+  .chat-delete:hover { color: #ff6b6b; transform: scale(1.2); }
+  #main {
+    flex: 1; margin-left: 280px; display: flex; flex-direction: column;
+    transition: var(--transition); position: relative;
+  }
+  #sidebar.collapsed + #main { margin-left: 80px; }
+  #header {
+    padding: 24px 40px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--glass); backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 40; animation: fadeInDown 0.6s ease;
+  }
+  @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  .header-title {
+    font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; color: var(--text);
+  }
+  .header-title em { color: var(--accent); font-style: italic; }
+  .header-actions { display: flex; gap: 12px; }
+  .icon-btn {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    color: var(--muted); padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    font-family: 'DM Mono', monospace; font-size: 12px; transition: var(--transition);
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(200,169,110,0.2); }
+  #chat-container {
+    flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column;
+    gap: 24px; scroll-behavior: smooth;
+  }
+  .message {
+    max-width: 760px; padding: 20px 24px; border-radius: 14px;
+    animation: messageIn 0.5s cubic-bezier(0.16,1,0.3,1); line-height: 1.8;
+    position: relative; overflow: hidden;
+  }
+  .message::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .message:hover::before { opacity: 1; }
+  @keyframes messageIn { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .message.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, rgba(91,143,168,0.15), rgba(200,169,110,0.1));
+    border: 1px solid rgba(91,143,168,0.3); border-radius: 14px 4px 14px 14px;
+    box-shadow: 0 4px 20px rgba(91,143,168,0.15);
+  }
+  .message.assistant {
+    align-self: flex-start;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow), 0 0 0 1px rgba(200,169,110,0.1);
+    border-radius: 4px 14px 14px 14px;
+    position: relative;
+  }
+  .message.assistant::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+  .message.system {
+    align-self: center; font-size: 13px; color: var(--muted);
+    background: transparent; border: none; text-align: center; padding: 8px 20px;
+    animation: fadeIn 0.6s ease;
+  }
+  .message.assistant h1, .message.assistant h2, .message.assistant h3 {
+    font-family: 'Playfair Display', serif; color: var(--accent);
+    margin: 16px 0 10px; font-weight: 600;
+  }
+  .message.assistant h1 { font-size: 24px; }
+  .message.assistant h2 { font-size: 20px; }
+  .message.assistant h3 { font-size: 17px; }
+  .message.assistant p { margin: 10px 0; }
+  .message.assistant strong { color: var(--accent); font-weight: 500; }
+  .message.assistant em { color: var(--accent2); font-style: italic; }
+  .message.assistant code {
+    background: rgba(255,255,255,0.06); padding: 2px 6px;
+    border-radius: 4px; color: var(--accent2); font-size: 14px;
+  }
+  .message.assistant pre {
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin: 14px 0; overflow-x: auto;
+    position: relative;
+  }
+  .message.assistant pre::before {
+    content: 'code'; position: absolute; top: 8px; right: 12px;
+    font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .message.assistant pre code {
+    background: transparent; padding: 0; color: var(--text);
+    display: block; font-size: 14px; line-height: 1.6;
+  }
+  .message.assistant ul, .message.assistant ol { margin: 10px 0; padding-left: 24px; }
+  .message.assistant li { margin: 6px 0; }
+  .message.assistant blockquote {
+    border-left: 3px solid var(--accent2); padding-left: 16px; margin: 12px 0;
+    color: var(--muted); font-style: italic; background: rgba(91,143,168,0.05);
+    padding: 12px 16px; border-radius: 0 8px 8px 0;
+  }
+  .message.assistant a {
+    color: var(--accent2); text-decoration: none;
+    border-bottom: 1px dashed var(--accent2); transition: var(--transition);
+  }
+  .message.assistant a:hover { color: var(--accent); border-bottom-style: solid; }
+  .message.assistant table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  .message.assistant th, .message.assistant td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+  .message.assistant th { background: rgba(200,169,110,0.08); color: var(--accent); font-weight: 500; }
+  .message.assistant img { max-width: 100%; border-radius: 8px; margin: 12px 0; border: 1px solid var(--border); }
+  #input-area {
+    padding: 20px 40px 40px; border-top: 1px solid var(--border);
+    background: var(--glass); backdrop-filter: blur(20px);
+    position: sticky; bottom: 0; animation: fadeInUp 0.6s ease;
+  }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .input-wrapper { max-width: 760px; margin: 0 auto; display: flex; gap: 12px; align-items: flex-end; }
+  #user-input {
+    flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 15px; padding: 14px 18px; outline: none; resize: none;
+    min-height: 52px; max-height: 200px; transition: var(--transition);
+  }
+  #user-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,169,110,0.1); }
+  #send-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #0a0c0f; padding: 14px 24px; border-radius: 12px;
+    font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 400;
+    cursor: pointer; transition: var(--transition); white-space: nowrap;
+  }
+  #send-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(200,169,110,0.3); }
+  #send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .typing {
+    font-size: 13px; color: var(--muted); margin-left: 8px; display: none;
+    font-style: italic; padding: 12px 24px; background: var(--glass);
+    border-radius: 20px; border: 1px solid var(--glass-border);
+    align-self: flex-start; animation: fadeIn 0.3s ease;
+  }
+  .typing::after { content: 'thinking'; animation: dots 1.5s steps(5,end) infinite; }
+  @keyframes dots { 0%,20% { content: 'thinking' } 40% { content: 'thinking.' } 60% { content: 'thinking..' } 80%,100% { content: 'thinking...' } }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 60px 20px;
+    color: var(--muted); animation: fadeIn 0.8s ease;
+  }
+  .empty-state h3 {
+    font-family: 'Playfair Display', serif; font-size: 28px; color: var(--text);
+    margin-bottom: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .empty-state p { max-width: 400px; line-height: 1.8; }
+  #scroll-bottom {
+    position: fixed; bottom: 120px; right: 40px; width: 48px; height: 48px;
+    background: var(--glass); backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border); border-radius: 50%;
+    color: var(--accent); font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: translateY(20px); transition: var(--transition);
+    z-index: 30; box-shadow: var(--glass-shadow);
+  }
+  #scroll-bottom.visible { opacity: 1; transform: translateY(0); }
+  #scroll-bottom:hover {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0a0c0f; transform: translateY(-4px) scale(1.1);
+  }
+  .panel { max-width: 600px; margin: 0 auto; padding: 40px; animation: fadeIn 0.6s ease; }
+  .panel h3 {
+    font-family: 'Playfair Display', serif; font-size: 22px; color: var(--accent);
+    margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .setting-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+  .setting-row label { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+  .setting-row input, .setting-row select {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 14px; padding: 12px 16px; outline: none; transition: var(--transition);
+  }
+  .setting-row input:focus, .setting-row select:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,169,110,0.1);
+  }
+  .save-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #0a0c0f; padding: 12px 28px; border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 13px; cursor: pointer;
+    transition: var(--transition); margin-top: 8px;
+  }
+  .save-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(200,169,110,0.3); }
+  .bg-preview { display: flex; gap: 12px; margin-top: 8px; }
+  .bg-option {
+    width: 60px; height: 60px; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; transition: var(--transition); position: relative;
+  }
+  .bg-option:hover { transform: scale(1.1); }
+  .bg-option.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,169,110,0.2); }
+  .bg-option.active::after {
+    content: '✓'; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); color: white; font-size: 24px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .hidden { display: none !important; }
+  .fade-in { animation: fadeIn 0.6s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 900px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    #sidebar.collapsed + #main { margin-left: 0; }
+    .mobile-toggle { display: block !important; }
+    #chat-container, #input-area, #header { padding-left: 20px; padding-right: 20px; }
+  }
+  .mobile-toggle { display: none; }
+</style>
+</head>
+<body>
+
+<div class="bg-layer bg-aurora" id="bg-layer"></div>
+<div class="particles" id="particles"></div>
+<div id="cursor"></div>
+<div id="progress"></div>
+
+<div class="app">
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <button class="toggle-sidebar" id="toggle-sidebar">◂</button>
+      <h2>Velocity <em>AI</em></h2>
+    </div>
+    <div class="new-chat-btn" id="new-chat-btn">
+      <span class="nav-icon">＋</span>
+      <span class="new-chat-text">New Conversation</span>
+    </div>
+    <nav class="nav-menu">
+      <a href="#" class="nav-item active" data-view="chat">
+        <span class="nav-icon">💬</span><span class="nav-label">Chat</span>
+      </a>
+      <a href="#" class="nav-item" data-view="history">
+        <span class="nav-icon">📜</span><span class="nav-label">History</span>
+      </a>
+      <a href="#" class="nav-item" data-view="account">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Account</span>
+      </a>
+    </nav>
+    <div class="chat-list" id="chat-list"></div>
+  </aside>
+
+  <main id="main">
+    <header id="header">
+      <div class="header-title">Velocity <em>AI</em></div>
+      <div class="header-actions">
+        <button class="icon-btn mobile-toggle" id="mobile-toggle">☰</button>
+        <button class="icon-btn" id="clear-chat">Clear</button>
+        <button class="icon-btn" id="export-chat">Export</button>
+      </div>
+    </header>
+
+    <div id="chat-view" class="view active">
+      <div id="chat-container">
+        <div class="empty-state" id="empty-state">
+          <h3>Welcome to Velocity AI</h3>
+          <p>Start a conversation. Powered by Groq</p>
+        </div>
+      </div>
+      <div class="typing" id="typing">Velocity is thinking</div>
+      <div id="input-area">
+        <div class="input-wrapper">
+          <textarea id="user-input" placeholder="Ask anything..." rows="1"></textarea>
+          <button id="send-btn">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="scroll-bottom" title="Scroll to bottom">↓</button>
+
+    <div id="history-view" class="view hidden panel">
+      <h3>Conversation History</h3>
+      <div id="history-list" class="chat-list"></div>
+    </div>
+
+    <div id="account-view" class="view hidden panel">
+      <h3>Account Settings</h3>
+      <div class="setting-row">
+        <label>Worker URL</label>
+        <input type="text" id="worker-url-input" placeholder="https://your-worker.workers.dev">
+        <small style="color:var(--muted);font-size:12px">Your Cloudflare Worker endpoint</small>
+      </div>
+      <div class="setting-row">
+        <label>Model</label>
+        <select id="model-select">
+          <option value="openai/gpt-oss-120b">GPT oss 120b (Reccomended)</option>
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Good)</option>
+          <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fast)</option>
+          <option value="groq/compound">Groq compound</option>
+          <option value="qwen/qwen3-32b">Qwen 3 32b(my favourite)</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label>Theme Accent</label>
+        <select id="accent-select">
+          <option value="#c8a96e">Gold</option>
+          <option value="#5b8fa8">Azure</option>
+          <option value="#a96ec8">Amethyst</option>
+          <option value="#6ec8a9">Emerald</option>
+          <option value="#ff6b6b">Coral</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label>Background Style</label>
+        <div class="bg-preview">
+          <div class="bg-option active" data-bg="aurora" style="background: linear-gradient(135deg, #1a1f2e, #0f1419)"></div>
+          <div class="bg-option" data-bg="cosmic" style="background: linear-gradient(135deg, #1a1520, #0f0a15)"></div>
+          <div class="bg-option" data-bg="forest" style="background: linear-gradient(135deg, #152018, #0a1510)"></div>
+          <div class="bg-option" data-bg="gradient" style="background: linear-gradient(135deg, #0a0c0f, #1a1f2e)"></div>
+        </div>
+      </div>
+      <button class="save-btn" id="save-settings">Save Settings</button>
+      <div style="margin-top:40px;padding-top:24px;border-top:1px solid var(--border)">
+        <button class="icon-btn" id="clear-all-data" style="background:rgba(255,107,107,0.1);border-color:rgba(255,107,107,0.3);color:#ff6b6b">Clear All Data</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── CONFIGURATION ──
+const CONFIG = {
+  workerUrl: fixWorkerUrl(localStorage.getItem('velocity_worker_url') || 'https://velocity-groq-proxy.tchazq1n.workers.dev'),
+  model: localStorage.getItem('velocity_model') || 'llama-3.3-70b-versatile',
+  accent: localStorage.getItem('velocity_accent') || '#c8a96e',
+  background: localStorage.getItem('velocity_background') || 'aurora',
+  currentChatId: localStorage.getItem('velocity_current_chat') || null
+};
+
+let chats = JSON.parse(localStorage.getItem('velocity_chats') || '{}');
+let messages = [];
+
+// ── DOM ELEMENTS ──
+const els = {
+  cursor: document.getElementById('cursor'),
+  progress: document.getElementById('progress'),
+  bgLayer: document.getElementById('bg-layer'),
+  particles: document.getElementById('particles'),
+  sidebar: document.getElementById('sidebar'),
+  toggleSidebar: document.getElementById('toggle-sidebar'),
+  mobileToggle: document.getElementById('mobile-toggle'),
+  navItems: document.querySelectorAll('.nav-item'),
+  views: { chat: document.getElementById('chat-view'), history: document.getElementById('history-view'), account: document.getElementById('account-view') },
+  chatContainer: document.getElementById('chat-container'),
+  emptyState: document.getElementById('empty-state'),
+  chatList: document.getElementById('chat-list'),
+  historyList: document.getElementById('history-list'),
+  newChatBtn: document.getElementById('new-chat-btn'),
+  userInput: document.getElementById('user-input'),
+  sendBtn: document.getElementById('send-btn'),
+  typing: document.getElementById('typing'),
+  clearChat: document.getElementById('clear-chat'),
+  exportChat: document.getElementById('export-chat'),
+  scrollBottom: document.getElementById('scroll-bottom'),
+  workerUrlInput: document.getElementById('worker-url-input'),
+  modelSelect: document.getElementById('model-select'),
+  accentSelect: document.getElementById('accent-select'),
+  bgOptions: document.querySelectorAll('.bg-option'),
+  saveSettings: document.getElementById('save-settings'),
+  clearAllData: document.getElementById('clear-all-data')
+};
+
+// ── INITIALIZATION ──
+function init() {
+  console.log('✦ Velocity AI initializing...');
+  console.log('✦ Worker URL:', CONFIG.workerUrl);
+  
+  document.documentElement.style.setProperty('--accent', CONFIG.accent);
+  setBackground(CONFIG.background);
+  
+  els.workerUrlInput.value = CONFIG.workerUrl;
+  els.modelSelect.value = CONFIG.model;
+  els.accentSelect.value = CONFIG.accent;
+  
+  createParticles();
+  
+  if(CONFIG.currentChatId && chats[CONFIG.currentChatId]) {
+    messages = chats[CONFIG.currentChatId].messages || [];
+    renderMessages();
+  } else {
+    createNewChat();
+  }
+  
+  renderChatList();
+  renderHistoryList();
+  setupEventListeners();
+  initCursor();
+  initScrollProgress();
+  initScrollButton();
+  
+  els.userInput.addEventListener('input', () => {
+    els.userInput.style.height = 'auto';
+    els.userInput.style.height = Math.min(els.userInput.scrollHeight, 200) + 'px';
+  });
+  
+  console.log('✦ Velocity AI initialized successfully');
+}
+
+// ── BACKGROUND & PARTICLES ──
+function setBackground(bgName) {
+  els.bgLayer.className = 'bg-layer bg-' + bgName;
+  CONFIG.background = bgName;
+  localStorage.setItem('velocity_background', bgName);
+  els.bgOptions.forEach(opt => opt.classList.toggle('active', opt.dataset.bg === bgName));
+}
+
+function createParticles() {
+  els.particles.innerHTML = '';
+  for(let i = 0; i < 30; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    particle.style.left = Math.random() * 100 + '%';
+    particle.style.animationDelay = Math.random() * 20 + 's';
+    particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+    els.particles.appendChild(particle);
+  }
+}
+
+// ── CURSOR & SCROLL ──
+function initCursor() {
+  document.addEventListener('mousemove', (e) => {
+    els.cursor.style.left = e.clientX + 'px';
+    els.cursor.style.top = e.clientY + 'px';
+  });
+  document.addEventListener('mousedown', () => els.cursor.classList.add('clicking'));
+  document.addEventListener('mouseup', () => els.cursor.classList.remove('clicking'));
+  document.querySelectorAll('a, button, .nav-item, .chat-item, #send-btn, .icon-btn').forEach(el => {
+    el.addEventListener('mouseenter', () => els.cursor.classList.add('big'));
+    el.addEventListener('mouseleave', () => els.cursor.classList.remove('big'));
+  });
+}
+
+function initScrollProgress() {
+  window.addEventListener('scroll', () => {
+    const scrollTop = document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const progress = (scrollTop / scrollHeight) * 100;
+    els.progress.style.width = progress + '%';
+  });
+}
+
+function initScrollButton() {
+  els.chatContainer.addEventListener('scroll', () => {
+    const isNearBottom = els.chatContainer.scrollHeight - els.chatContainer.scrollTop - els.chatContainer.clientHeight < 100;
+    els.scrollBottom.classList.toggle('visible', !isNearBottom);
+  });
+  els.scrollBottom.addEventListener('click', () => {
+    els.chatContainer.scrollTo({ top: els.chatContainer.scrollHeight, behavior: 'smooth' });
+  });
+}
+
+// ── CHAT MANAGEMENT ──
+function createNewChat() {
+  const id = 'chat_' + Date.now();
+  chats[id] = { id, title: 'New Conversation', messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  saveChats();
+  switchChat(id);
+  renderChatList();
+  renderHistoryList();
+}
+
+function switchChat(id) {
+  CONFIG.currentChatId = id;
+  localStorage.setItem('velocity_current_chat', id);
+  messages = chats[id]?.messages || [];
+  renderMessages();
+  renderChatList();
+}
+
+function deleteChat(id, e) {
+  e?.stopPropagation();
+  if(!confirm('Delete this conversation?')) return;
+  delete chats[id];
+  saveChats();
+  if(CONFIG.currentChatId === id) {
+    const remaining = Object.keys(chats);
+    if(remaining.length > 0) switchChat(remaining[0]);
+    else createNewChat();
+  }
+  renderChatList();
+  renderHistoryList();
+}
+
+function saveChats() {
+  localStorage.setItem('velocity_chats', JSON.stringify(chats));
+}
+
+function exportChat() {
+  if(messages.length === 0) { alert('No messages to export'); return; }
+  const content = messages.map(m => `[${m.role.toUpperCase()}]\n${m.text}\n`).join('\n---\n\n');
+  const blob = new Blob([content], {type: 'text/markdown'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `velocity-${CONFIG.currentChatId}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── RENDERING ──
+function renderMessages() {
+  els.chatContainer.innerHTML = '';
+  els.chatContainer.appendChild(els.emptyState);
+  if(messages.length === 0) {
+    els.emptyState.classList.remove('hidden');
+  } else {
+    els.emptyState.classList.add('hidden');
+    messages.forEach(msg => addMessageToDOM(msg.text, msg.role, false));
+  }
+  scrollToBottom();
+}
+
+function addMessageToDOM(text, role, animate = true) {
+  if(els.emptyState.parentNode === els.chatContainer) els.chatContainer.removeChild(els.emptyState);
+  const div = document.createElement('div');
+  const displayRole = role === 'assistant' || role === 'bot' ? 'assistant' : role;
+  div.className = `message ${displayRole}${animate ? ' fade-in' : ''}`;
+  if(displayRole === 'assistant') {
+    const raw = marked.parse(text);
+    div.innerHTML = DOMPurify.sanitize(raw);
+  } else {
+    div.textContent = text;
+  }
+  els.chatContainer.appendChild(div);
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  setTimeout(() => els.chatContainer.scrollTop = els.chatContainer.scrollHeight, 100);
+}
+
+function renderChatList() {
+  els.chatList.innerHTML = '';
+  Object.values(chats).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 20).forEach(chat => {
+    const item = document.createElement('div');
+    item.className = `chat-item${chat.id === CONFIG.currentChatId ? ' active' : ''}`;
+    item.innerHTML = `<span class="nav-icon">•</span><span class="chat-title">${escapeHtml(chat.title)}</span><span class="chat-delete" title="Delete">×</span>`;
+    item.addEventListener('click', () => switchChat(chat.id));
+    item.querySelector('.chat-delete').addEventListener('click', (e) => deleteChat(chat.id, e));
+    els.chatList.appendChild(item);
+  });
+}
+
+function renderHistoryList() {
+  els.historyList.innerHTML = '';
+  if(Object.keys(chats).length === 0) {
+    els.historyList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">No conversations yet</p>';
+    return;
+  }
+  Object.values(chats).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'chat-item';
+    item.innerHTML = `<span class="nav-icon">📄</span><div style="flex:1;min-width:0"><div class="chat-title">${escapeHtml(chat.title)}</div><small style="color:var(--muted);font-size:11px">${new Date(chat.updatedAt).toLocaleDateString()}</small></div><span class="chat-delete" title="Delete">×</span>`;
+    item.addEventListener('click', () => { switchChat(chat.id); switchView('chat'); });
+    item.querySelector('.chat-delete').addEventListener('click', (e) => deleteChat(chat.id, e));
+    els.historyList.appendChild(item);
+  });
+}
+
+// ── API CALL (via Cloudflare Workers) ──
+async function callGroq(prompt) {
+  console.log('🔧 callGroq() called');
+  console.log('🔧 Worker URL:', CONFIG.workerUrl);
+  
+  if(!CONFIG.workerUrl || CONFIG.workerUrl === 'undefined') {
+    addMessageToDOM('⚠️ Worker URL not configured. Check Account settings.', 'system');
+    return;
+  }
+  
+  messages.push({role: 'user', text: prompt});
+  chats[CONFIG.currentChatId].messages = messages;
+  chats[CONFIG.currentChatId].updatedAt = new Date().toISOString();
+  
+  if(messages.filter(m => m.role === 'user').length === 1) {
+    chats[CONFIG.currentChatId].title = prompt.slice(0, 40) + (prompt.length > 40 ? '…' : '');
+    renderChatList();
+  }
+  saveChats();
+  
+  const payload = {
+    messages: messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text || m.content || '' })),
+    model: CONFIG.model || 'llama-3.3-70b-versatile',
+    temperature: 0.7,
+    max_tokens: 2048
+  };
+  
+  console.log('📤 Sending payload:', {
+    url: CONFIG.workerUrl,
+    method: 'POST',
+    mode: 'cors',
+    messageCount: payload.messages.length,
+    model: payload.model
+  });
+  
+  try {
+    const res = await fetch(CONFIG.workerUrl, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('📥 Response status:', res.status, res.ok ? '✓' : '✗');
+    console.log('📥 Response headers:', Object.fromEntries(res.headers.entries()));
+    
+    if(!res.ok) {
+      const errorText = await res.text().catch(() => '[no body]');
+      console.error('❌ Error response:', errorText.slice(0, 500));
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || `HTTP ${res.status}`);
+      } catch(e) {
+        throw new Error(`HTTP ${res.status}: ${errorText.slice(0, 200)}`);
+      }
+    }
+    
+    const data = await res.json();
+    console.log('✅ Got response:', { hasChoices: !!data.choices, choiceCount: data.choices?.length });
+    
+    const reply = data.choices?.[0]?.message?.content || 'No response.';
+    
+    messages.push({role: 'assistant', text: reply});
+    chats[CONFIG.currentChatId].messages = messages;
+    chats[CONFIG.currentChatId].updatedAt = new Date().toISOString();
+    saveChats();
+    
+    addMessageToDOM(reply, 'assistant');
+    
+  } catch(e) {
+    console.error('💥 callGroq error:', e);
+    console.error('💥 Error stack:', e.stack);
+    messages.pop();
+    addMessageToDOM(`✦ Error: ${e.message}`, 'system');
+  }
+}
+
+// ── EVENT HANDLERS ──
+function setupEventListeners() {
+  els.toggleSidebar.addEventListener('click', () => els.sidebar.classList.toggle('collapsed'));
+  els.mobileToggle.addEventListener('click', () => els.sidebar.classList.toggle('open'));
+  
+  els.navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView(item.dataset.view);
+    });
+  });
+  
+  els.newChatBtn.addEventListener('click', createNewChat);
+  
+  els.sendBtn.addEventListener('click', async () => {
+    const text = els.userInput.value.trim();
+    if(!text) return;
+    addMessageToDOM(text, 'user');
+    els.userInput.value = '';
+    els.userInput.style.height = 'auto';
+    els.sendBtn.disabled = true;
+    els.typing.style.display = 'block';
+    await callGroq(text);
+    els.typing.style.display = 'none';
+    els.sendBtn.disabled = false;
+    els.userInput.focus();
+  });
+  
+  els.userInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      els.sendBtn.click();
+    }
+  });
+  
+  els.clearChat.addEventListener('click', () => {
+    if(confirm('Clear this conversation?')) {
+      messages = [];
+      chats[CONFIG.currentChatId].messages = [];
+      chats[CONFIG.currentChatId].updatedAt = new Date().toISOString();
+      saveChats();
+      renderMessages();
+    }
+  });
+  
+  els.exportChat.addEventListener('click', exportChat);
+  
+  els.saveSettings.addEventListener('click', () => {
+    CONFIG.workerUrl = els.workerUrlInput.value.trim();
+    CONFIG.model = els.modelSelect.value;
+    CONFIG.accent = els.accentSelect.value;
+    localStorage.setItem('velocity_worker_url', CONFIG.workerUrl);
+    localStorage.setItem('velocity_model', CONFIG.model);
+    localStorage.setItem('velocity_accent', CONFIG.accent);
+    document.documentElement.style.setProperty('--accent', CONFIG.accent);
+    const btn = els.saveSettings;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Saved';
+    setTimeout(() => btn.textContent = orig, 1500);
+    console.log('✦ Settings saved:', CONFIG);
+  });
+  
+  els.clearAllData.addEventListener('click', () => {
+    if(confirm('⚠️ This will delete ALL chats and settings. Continue?')) {
+      localStorage.clear();
+      location.reload();
+    }
+  });
+  
+  els.bgOptions.forEach(opt => {
+    opt.addEventListener('click', () => setBackground(opt.dataset.bg));
+  });
+}
+
+function switchView(name) {
+  els.navItems.forEach(i => i.classList.toggle('active', i.dataset.view === name));
+  Object.values(els.views).forEach(v => v.classList.add('hidden'));
+  els.views[name].classList.remove('hidden');
+  els.sidebar.classList.remove('open');
+  if(name === 'history') renderHistoryList();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+// ── URL HELPER: Auto-fix Worker URL ──
+function fixWorkerUrl(url) {
+  if(!url) return '';
+  // Remove trailing slash
+  url = url.replace(/\/$/, '');
+  // Add https:// if missing
+  if(!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  return url;
+}
+// ── START ──
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
