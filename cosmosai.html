@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>monkeygpt</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <title>cosmos ai</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
   <style>
     :root {
-      --bg: #1e1e2e;
-      --surface: #282836;
-      --text: #cdd6f4;
-      --subtext: #a6adc8;
-      --accent: #f5c211;
-      --accent-hover: #e0b000;
-      --border: #313244;
-      --error: #f38ba8;
-      --font: 'JetBrains Mono', monospace;
+      --bg: #0a0a0f;
+      --bg2: #12121a;
+      --surface: rgba(30, 30, 50, 0.6);
+      --text: #e8e8f0;
+      --subtext: #a0a0b8;
+      --accent: #a855f7;
+      --accent2: #6366f1;
+      --border: rgba(168, 85, 247, 0.2);
+      --error: #ef4444;
+      --font: 'Space Grotesk', sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -28,199 +29,322 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      position: relative;
+    }
+    /* Animated stars background */
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: twinkle 3s ease-in-out infinite;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.2); }
     }
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.5rem 2rem;
-      border-bottom: 2px solid var(--border);
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      z-index: 10;
       gap: 1rem;
     }
-    .header-left { display: flex; align-items: center; gap: 1rem; }
-    #history-btn {
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    #sidebar-btn {
       background: none; border: none; color: var(--subtext);
-      font-size: 1.2rem; cursor: pointer; padding: 0.5rem;
-      transition: color 0.2s;
+      font-size: 1.1rem; cursor: pointer; padding: 0.4rem;
+      transition: all 0.2s; border-radius: 6px;
     }
-    #history-btn:hover { color: var(--accent); }
-    h1 { font-weight: 700; letter-spacing: -1px; }
-    .accent { color: var(--accent); }
+    #sidebar-btn:hover { color: var(--accent); background: rgba(168, 85, 247, 0.1); }
+    h1 { font-weight: 600; font-size: 1.25rem; letter-spacing: -0.02em; }
+    .gradient-text{
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     #settings-btn {
       background: none; border: none; color: var(--subtext);
-      font-size: 1.2rem; cursor: pointer; padding: 0.5rem;
-      transition: color 0.2s;
+      font-size: 1.1rem; cursor: pointer; padding: 0.4rem;
+      transition: all 0.2s; border-radius: 6px;
     }
-    #settings-btn:hover { color: var(--accent); }
+    #settings-btn:hover { color: var(--accent); background: rgba(168, 85, 247, 0.1); }
 
     main {
       flex: 1;
       overflow-y: auto;
-      padding: 1.5rem 2rem;
+      padding: 1.5rem;
       display: flex;
       flex-direction: column;
-      gap: 0.8rem;
+      gap: 1rem;
+      z-index: 1;
+      position: relative;
     }
     .message {
-      max-width: 80%;
+      max-width: 85%;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
       line-height: 1.6;
-      padding: 0.6rem 0;
-      word-break: break-word;
+      font-size: 0.95rem;
+      animation: fadeIn 0.3s ease;
     }
-    .message.user { align-self: flex-end; color: var(--accent); }
-    .message.ai { align-self: flex-start; color: var(--text); line-height: 1.7; }
-    .message.ai h1, .message.ai h2, .message.ai h3 { margin: 12px 0 8px; color: var(--accent); }
-    .message.ai h1 { font-size: 1.3rem; }
-    .message.ai h2 { font-size: 1.1rem; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .message.ai {
+      align-self: flex-start;
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .message.ai h1, .message.ai h2, .message.ai h3 {
+      margin: 12px 0 8px;
+      font-weight: 600;
+    }
+    .message.ai h1 { font-size: 1.2rem; color: var(--accent); }
+    .message.ai h2 { font-size: 1.05rem; color: var(--accent2); }
     .message.ai p { margin: 8px 0; }
-    .message.ai code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-    .message.ai pre { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 10px 0; }
+    .message.ai code {
+      background: rgba(168, 85, 247, 0.15);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+    }
+    .message.ai pre {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 1rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      margin: 12px 0;
+      border: 1px solid var(--border);
+    }
     .message.ai pre code { background: none; padding: 0; }
     .message.ai ul, .message.ai ol { margin: 8px 0; padding-left: 24px; }
     .message.ai li { margin: 4px 0; }
-    .message.ai blockquote { border-left: 3px solid var(--accent); padding-left: 12px; margin: 10px 0; color: var(--subtext); }
+    .message.ai blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 16px;
+      margin: 12px 0;
+      color: var(--subtext);
+      font-style: italic;
+    }
     .message.ai a { color: var(--accent); text-decoration: none; }
     .message.ai a:hover { text-decoration: underline; }
-    .message.ai table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 0.9em; }
-    .message.ai th, .message.ai td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
-    .message.ai th { background: rgba(255,255,255,0.05); color: var(--accent); }
-    .message.system { align-self: center; color: var(--subtext); font-style: italic; opacity: 0.7; }
+    .message.ai table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 0.9em;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .message.ai th, .message.ai td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .message.ai th { background: rgba(168, 85, 247, 0.15); color: var(--accent); }
+    .message.system {
+      align-self: center;
+      color: var(--subtext);
+      font-size: 0.85rem;
+      font-style: italic;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 20px;
+    }
     .cursor::after { content: "▋"; animation: blink 1s step-end infinite; }
     @keyframes blink { 50% { opacity: 0; } }
 
     .input-area {
-      padding: 1rem 2rem 1.5rem;
-      background: var(--bg);
-      border-top: 2px solid var(--border);
+      padding: 1rem 1.5rem 1.5rem;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
       display: flex;
-      gap: 0.8rem;
+      gap: 0.75rem;
       align-items: flex-end;
+      z-index: 10;
     }
     textarea {
       flex: 1;
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid var(--border);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       color: var(--text);
       font-family: var(--font);
-      font-size: 1rem;
-      padding: 0.5rem 0;
+      font-size: 0.95rem;
+      padding: 0.875rem 1rem;
       resize: none;
       outline: none;
-      min-height: 2.5rem;
-      max-height: 9rem;
-      transition: border-color 0.2s;
+      min-height: 48px;
+      max-height: 150px;
+      transition: all 0.2s;
     }
-    textarea:focus { border-bottom-color: var(--accent); }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+    }
     #send-btn {
-      background: var(--accent);
-      color: var(--bg);
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
       border: none;
-      padding: 0.6rem 1rem;
+      padding: 0.75rem 1.25rem;
       font-family: var(--font);
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
-      height: 2.5rem;
+      border-radius: 12px;
+      transition: all 0.2s;
+      height: 48px;
     }
-    #send-btn:hover { background: var(--accent-hover); }
-    #send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #send-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+    }
+    #send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    #settings-panel, #history-panel {
+    #sidebar, #settings-panel {
       position: fixed;
       top: 0; right: 0;
-      width: 320px;
+      width: 300px;
       height: 100%;
-      background: var(--surface);
-      padding: 2rem;
+      background: rgba(18, 18, 26, 0.95);
+      backdrop-filter: blur(30px);
+      padding: 1.5rem;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 2px solid var(--border);
+      border-left: 1px solid var(--border);
       z-index: 100;
       overflow-y: auto;
     }
-    #settings-panel.open, #history-panel.open { transform: translateX(0); }
-    #history-panel h2 { margin-bottom: 1.5rem; color: var(--accent); }
+    #sidebar.open, #settings-panel.open { transform: translateX(0); }
+    #sidebar h2, #settings-panel h2 {
+      margin-bottom: 1.25rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .new-chat-btn {
+      width: 100%; padding: 0.75rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: white;
+      font-family: var(--font); font-weight: 600;
+      cursor: pointer; border-radius: 10px;
+      margin-bottom: 1rem; transition: all 0.2s;
+    }
+    .new-chat-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+    }
     .chat-list { display: flex; flex-direction: column; gap: 0.5rem; }
     .chat-item {
       display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.75rem; border-radius: 6px;
-      cursor: pointer; transition: background 0.2s;
+      padding: 0.75rem; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s;
       font-size: 0.9rem;
+      background: rgba(255, 255, 255, 0.02);
     }
-    .chat-item:hover { background: rgba(255,255,255,0.05); }
-    .chat-item.active { background: rgba(245,194,17,0.15); }
+    .chat-item:hover { background: rgba(168, 85, 247, 0.1); }
+    .chat-item.active {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid var(--border);
+    }
     .chat-item .chat-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .chat-item .chat-delete {
       opacity: 0; color: var(--subtext); cursor: pointer;
       transition: opacity 0.2s, color 0.2s;
+      padding: 0.25rem;
     }
     .chat-item:hover .chat-delete { opacity: 1; }
     .chat-delete:hover { color: var(--error); }
-    .new-chat-btn {
-      width: 100%; padding: 0.75rem;
-      background: rgba(245,194,17,0.15);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      font-family: var(--font); font-weight: 600;
-      cursor: pointer; border-radius: 6px;
-      margin-bottom: 1rem; transition: all 0.2s;
-    }
-    .new-chat-btn:hover { background: var(--accent); color: var(--bg); }
-    #settings-panel h2 { margin-bottom: 1.5rem; color: var(--accent); }
-    label { display: block; margin-bottom: 1.2rem; color: var(--subtext); font-size: 0.9rem; }
-    input, select {
+    label { display: block; margin-bottom: 1.25rem; color: var(--subtext); font-size: 0.9rem; }
+    select {
       width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.3rem;
-      background: var(--bg);
+      padding: 0.625rem;
+      margin-top: 0.5rem;
+      background: var(--surface);
       border: 1px solid var(--border);
+      border-radius: 8px;
       color: var(--text);
       font-family: var(--font);
       outline: none;
+      transition: all 0.2s;
     }
-    input:focus, select:focus { border-color: var(--accent); }
+    select:focus { border-color: var(--accent); }
     #save-settings {
       width: 100%;
-      padding: 0.7rem;
-      background: var(--accent);
-      color: var(--bg);
+      padding: 0.75rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
       border: none;
+      color: white;
       font-family: var(--font);
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      margin-top: 1rem;
+      border-radius: 10px;
+      margin-top: 0.5rem;
+      transition: all 0.2s;
     }
-    .warning { color: var(--error); font-size: 0.8rem; margin-top: 0.5rem; }
-    .hidden { display: none; }
+    #save-settings:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+    }
 
     /* Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--subtext); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
   </style>
 </head>
 <body>
+  <div class="stars" id="stars"></div>
+
   <header>
     <div class="header-left">
-      <button id="history-btn" title="History">☰</button>
-      <h1>monkey<span class="accent">gpt</span></h1>
+      <button id="sidebar-btn" title="Chats">☰</button>
+      <h1>cosmos<span class="gradient-text">ai</span></h1>
     </div>
     <button id="settings-btn" title="Settings">⚙️</button>
   </header>
 
   <main id="chat-container">
-    <div class="message system">welcome to monkeygpt. select your model in settings, then type below.</div>
+    <div class="message system">welcome to cosmos ai. explore the universe of knowledge.</div>
   </main>
 
   <div class="input-area">
-    <textarea id="user-input" placeholder="type your message..." rows="1"></textarea>
-    <button id="send-btn">↵</button>
+    <textarea id="user-input" placeholder="ask anything..." rows="1"></textarea>
+    <button id="send-btn">→</button>
   </div>
 
-  <div id="history-panel">
-    <h2>chats</h2>
+  <div id="sidebar">
+    <h2>conversations</h2>
     <button class="new-chat-btn" id="new-chat-btn">+ new chat</button>
     <div class="chat-list" id="chat-list"></div>
   </div>
@@ -244,29 +368,40 @@
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
+    const sidebarBtn = document.getElementById('sidebar-btn');
+    const sidebar = document.getElementById('sidebar');
     const settingsBtn = document.getElementById('settings-btn');
     const settingsPanel = document.getElementById('settings-panel');
-    const historyBtn = document.getElementById('history-btn');
-    const historyPanel = document.getElementById('history-panel');
     const newChatBtn = document.getElementById('new-chat-btn');
     const chatListEl = document.getElementById('chat-list');
     const modelSelect = document.getElementById('model-select');
     const saveBtn = document.getElementById('save-settings');
 
-    let currentModel = localStorage.getItem('monkeygpt_model') || 'openai/gpt-oss-120b';
+    let currentModel = localStorage.getItem('cosmosai_model') || 'openai/gpt-oss-120b';
     let messages = [];
     let isStreaming = false;
-    let chats = JSON.parse(localStorage.getItem('monkeygpt_chats') || '{}');
-    let currentChatId = localStorage.getItem('monkeygpt_current_chat') || null;
+    let chats = JSON.parse(localStorage.getItem('cosmosai_chats') || '{}');
+    let currentChatId = localStorage.getItem('cosmosai_current_chat') || null;
 
     modelSelect.value = currentModel;
 
+    // Create animated stars
+    const starsContainer = document.getElementById('stars');
+    for (let i = 0; i < 100; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.animationDelay = Math.random() * 3 + 's';
+      starsContainer.appendChild(star);
+    }
+
     // Panel toggles
-    settingsBtn.onclick = () => { historyPanel.classList.remove('open'); settingsPanel.classList.toggle('open'); };
-    historyBtn.onclick = () => { settingsPanel.classList.remove('open'); historyPanel.classList.toggle('open'); renderChatList(); };
+    sidebarBtn.onclick = () => { settingsPanel.classList.remove('open'); sidebar.classList.toggle('open'); renderChatList(); };
+    settingsBtn.onclick = () => { sidebar.classList.remove('open'); settingsPanel.classList.toggle('open'); };
     saveBtn.onclick = () => {
       currentModel = modelSelect.value;
-      localStorage.setItem('monkeygpt_model', currentModel);
+      localStorage.setItem('cosmosai_model', currentModel);
       settingsPanel.classList.remove('open');
     };
 
@@ -280,24 +415,23 @@
 
     function createNewChat() {
       const id = generateId();
-      chats[id] = { id, title: 'new chat', messages: [], createdAt: Date.now() };
+      chats[id] = { id, title: 'new conversation', messages: [], createdAt: Date.now() };
       saveChats();
       loadChat(id);
       renderChatList();
     }
 
     function saveChats() {
-      localStorage.setItem('monkeygpt_chats', JSON.stringify(chats));
+      localStorage.setItem('cosmosai_chats', JSON.stringify(chats));
     }
 
     function loadChat(id) {
       currentChatId = id;
-      localStorage.setItem('monkeygpt_current_chat', id);
+      localStorage.setItem('cosmosai_current_chat', id);
       messages = chats[id]?.messages || [];
-      // Clear and re-render chat
       chatContainer.innerHTML = '';
       if (messages.length === 0) {
-        addMessage('system', 'new chat. type below to start.');
+        addMessage('system', 'welcome to cosmos ai. explore the universe of knowledge.');
       } else {
         messages.forEach(m => {
           if (m.role === 'user') addMessage('user', m.content);
@@ -308,12 +442,12 @@
         });
       }
       renderChatList();
-      historyPanel.classList.remove('open');
+      sidebar.classList.remove('open');
     }
 
     function deleteChat(id, e) {
       e.stopPropagation();
-      if (!confirm('delete this chat?')) return;
+      if (!confirm('delete this conversation?')) return;
       delete chats[id];
       saveChats();
       if (currentChatId === id) {
@@ -331,8 +465,8 @@
         const item = document.createElement('div');
         item.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
         item.innerHTML = `
-          <span>•</span>
-          <span class="chat-title">${escapeHtml(chat.title || 'new chat')}</span>
+          <span>✦</span>
+          <span class="chat-title">${escapeHtml(chat.title || 'new conversation')}</span>
           <span class="chat-delete" title="Delete">×</span>
         `;
         item.onclick = () => loadChat(chat.id);
@@ -359,7 +493,7 @@
     // Auto-resize textarea
     userInput.addEventListener('input', () => {
       userInput.style.height = 'auto';
-      userInput.style.height = Math.min(userInput.scrollHeight, 144) + 'px';
+      userInput.style.height = Math.min(userInput.scrollHeight, 150) + 'px';
     });
 
     // Send on Enter, newline on Shift+Enter
@@ -378,7 +512,6 @@
       const div = document.createElement('div');
       div.className = `message ${role}`;
       if (role === 'ai') {
-        // Parse markdown for AI responses
         div.innerHTML = DOMPurify.sanitize(marked.parse(content));
       } else {
         div.textContent = content;
@@ -422,7 +555,7 @@
 
         const data = await res.json();
         const reply = data.choices?.[0]?.message?.content || 'No response.';
-        
+
         // Typewriter effect with raw text
         aiBubble.textContent = '';
         for (let i = 0; i < reply.length; i++) {

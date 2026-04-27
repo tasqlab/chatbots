@@ -84,8 +84,7 @@ header::after{content:'';display:block;width:100%;height:2px;background:linear-g
 
 <script>
 // ── ⚠️ CONFIGURATION ⚠️ ──
-const GROQ_API_KEY = "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"; 
-// ✅ Your chosen model (oss 120b or other)
+const WORKER_URL = "https://velocity-groq-proxy.tchazq1n.workers.dev";
 const GROQ_MODEL = "openai/gpt-oss-120b"; // ← Change if needed
 // ────────────────────────
 
@@ -133,22 +132,24 @@ function addMessage(text, cls) {
 }
 
 async function checkConnection() {
-  if(!GROQ_API_KEY || GROQ_API_KEY === "YOUR_GROQ_API_KEY_HERE") {
-    els.status.textContent = "● ERROR: NO API KEY";
+  if(!WORKER_URL) {
+    els.status.textContent = "● ERROR: NO WORKER URL";
     els.status.className = "status error";
-    els.debug.textContent = "> EDIT HTML: LINE 108 (GROQ_API_KEY)";
-    addMessage("> ERROR: API Key missing. Edit line 108.", "error");
+    els.debug.textContent = "> EDIT HTML: LINE 88 (WORKER_URL)";
+    addMessage("> ERROR: Worker URL missing. Edit line 88.", "error");
     return false;
   }
 
-  els.debug.textContent = "> Pinging Groq API...";
+  els.debug.textContent = "> Pinging Worker API...";
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/models", {
-      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+    const res = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{role: "user", content: "ping"}], model: GROQ_MODEL, max_tokens: 1 })
     });
     
     if(!res.ok) {
-      if(res.status === 401) throw new Error("INVALID_KEY");
+      if(res.status === 401) throw new Error("UNAUTHORIZED");
       if(res.status === 429) throw new Error("RATE_LIMIT");
       throw new Error(`HTTP ${res.status}`);
     }
@@ -164,9 +165,6 @@ async function checkConnection() {
     els.status.className = "status error";
     els.debug.textContent = "> ERROR: " + e.message;
     addMessage(`> CONNECTION FAILED: ${e.message}`, "error");
-    if(e.message === "INVALID_KEY") {
-      addMessage("> Check key at console.groq.com/keys", "warning");
-    }
     return false;
   }
 }
@@ -175,18 +173,14 @@ async function callGroq(prompt) {
   history.push({role:"user", content:prompt});
   
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch(WORKER_URL, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: GROQ_MODEL,
         messages: history,
         temperature: 0.7,
-        max_tokens: 2048,
-        stream: false
+        max_tokens: 2048
       })
     });
 
@@ -194,36 +188,33 @@ async function callGroq(prompt) {
 
     if(!res.ok) {
       const err = await res.json().catch(() => ({}));
-      if(res.status === 401) throw new Error("INVALID_KEY");
+      if(res.status === 401) throw new Error("UNAUTHORIZED");
       if(res.status === 429) throw new Error("RATE_LIMIT");
       if(err.error?.message?.includes("decommissioned") || err.error?.message?.includes("not found")) {
         throw new Error("MODEL_NOT_FOUND");
       }
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
+      throw new Error(err.error || `HTTP ${res.status}`);
     }
 
     const data = await res.json();
-    const reply = data.choices[0]?.message?.content || "No response.";
+    const reply = data.choices?.[0]?.message?.content || "No response.";
     
     history.push({role:"assistant", content:reply});
     addMessage(reply, "bot");
     els.debug.textContent = "> RESPONSE RECEIVED";
 
   } catch(e) {
-    console.error("Groq Error:", e);
+    console.error("Worker Error:", e);
     history.pop();
     els.debug.textContent = `> ERROR: ${e.message}`;
     
-    if(e.message === "INVALID_KEY") {
-      els.status.textContent = "● ERROR: INVALID KEY";
-      addMessage("> Invalid API Key. Check line 108.", "error");
-    } else if(e.message === "RATE_LIMIT") {
+    if(e.message === "RATE_LIMIT") {
       els.status.textContent = "⚠️ RATE LIMITED";
       addMessage("> Rate limit reached. Wait ~1 minute.", "warning");
     } else if(e.message === "MODEL_NOT_FOUND") {
       els.status.textContent = "● ERROR: MODEL NOT FOUND";
       addMessage("> Model not available. Try: llama-3.3-70b-versatile", "warning");
-      addMessage("> Edit line 110 with a valid Groq model.", "system");
+      addMessage("> Edit line 89 with a valid Groq model.", "system");
     } else {
       addMessage(`> ERROR: ${e.message}`, "error");
     }
